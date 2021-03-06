@@ -308,6 +308,9 @@ install_package() {
       esac
     else
       echo "¯\_(ツ)_/¯"
+      echo "Good Luck"
+        apt-get install -yqq alien
+        alien -i $path_to_package_file
     fi
   else
     echo "¯\_(ツ)_/¯"
