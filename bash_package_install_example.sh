@@ -232,7 +232,6 @@ check_file_type() {
 
 install_package() {
   echo "Installing Package"
-  check_file_type
   if [[ $ext != "FAILED" ]]; then
     case $option in
     "1")
@@ -311,8 +310,54 @@ install_package() {
     else
       echo "¯\_(ツ)_/¯"
       echo "Good Luck"
+      case $ext in
+      "deb")
+        echo "installing ${PACKAGE_FOR_INSTALL}"
         apt-get install -yqq alien
         alien -i $path_to_package_file
+        if [[ ! $? -eq 0 ]]; then
+          echo "installing failed"
+          install_dependencies
+        fi
+        ;;
+      "rpm")
+        echo "You are trying to install a redhat package on UBUNTU you will be forced to install alien now"
+        apt-get install -yqq alien
+        alien -i $path_to_package_file
+        if [[ ! $? -eq 0 ]]; then
+          echo "installing failed"
+          install_dependencies
+        fi
+        ;;
+      *)
+        apt-get install -yqq build-essential
+        apt-get install -yqq checkinstall
+
+        cd $installation_target
+
+        # Check if folder is there or create it with the right permission
+        if [[ ! -d "$installation_target/source_code" ]]; then
+          mkdir "$installation_target/source_code"
+          chmod -R 777 "$installation_target/source_code"
+        fi
+
+        tar -xf $path_to_package_file -C "$installation_target/source_code" &&
+          foldername=$(ls "$installation_target/source_code" | grep "${my_ext[0]}")
+        cd "$installation_target/source_code/$foldername"
+        ./configure 
+        if [[ $? -eq 0 ]]; then
+          echo "configuration successful"
+          make
+          if [[ $? -eq 0 ]]; then
+            echo "make successful"
+          fi
+        fi
+        error_status=$(checkinstall 2>&1 1>/dev/null)
+        #or should we use:
+        #error_status=$(checkinstall 2>&1)
+        check_installation_status
+        ;;
+      esac
     fi
   else
     echo "¯\_(ツ)_/¯"
@@ -323,7 +368,7 @@ check_installation_status() {
   echo "Status for installation"
   if [[ $error_status != "" ]]; then
     echo "the following error was detected"
-    echo "$error_stat
+    echo "$error_stat"
     exit
   fi
 }
