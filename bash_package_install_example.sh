@@ -102,13 +102,13 @@ menu() {
   read -e -p "Type in the package you wish to download: " PACKAGE_FOR_INSTALL
   echo "#############################################"
   echo "How do you wish to install ${PACKAGE_FOR_INSTALL}"
-  read -e -p "(1):Install from source, (2): Install via dpkg or rpm, (q):Quit installer? " option
+  read -e -p "(1):Install from source, (2): Install via alien, (q):Quit installer? " option
   case $option in
   "1")
     echo "Selection was 1. Install from source"
     ;;
   "2")
-    echo "Selection was 2. Install via dpkg or rpm"
+    echo "Selection was 2. Install via alien"
     ;;
   [Qq]*)
     echo "Goodbye !"
@@ -230,134 +230,94 @@ check_file_type() {
   fi
 }
 
+install_software(){
+case $option in
+"1")
+  # Install from source"
+  echo "Installing from source"
+  apt-get install -yqq build-essential
+  apt-get install -yqq checkinstall
+
+  cd $installation_target
+
+  # Check if folder is there or create it with the right permission
+  if [[ ! -d "$installation_target/source_code" ]]; then
+    mkdir "$installation_target/source_code"
+    chmod -R 777 "$installation_target/source_code"
+  fi
+
+  tar -xf $path_to_package_file -C "$installation_target/source_code" &&
+  foldername=$(ls "$installation_target/source_code" | grep "${my_ext[0]}")
+  cd "$installation_target/source_code/$foldername"
+  
+  # try to build
+  ./configure 
+  if [[ $? -eq 0 ]]; then
+    echo "configuration successful"
+    make
+    if [[ $? -eq 0 ]]; then
+      echo "make successful"
+      checkinstall
+    else
+      error_status="make failed."
+    fi
+  else
+    error_status="config failed."
+  fi
+  #or should we use:
+  #error_status=$(checkinstall 2>&1)
+  check_installation_status
+;;
+"2")
+  # Install via dpkg or rpm"
+  echo "Installing via alien"
+  echo "installing ${PACKAGE_FOR_INSTALL}"  
+  apt-get install -yqq alien
+  alien -i $path_to_package_file
+  if [[ ! $? -eq 0 ]]; then
+    echo "installing failed"
+    install_dependencies
+  fi
+  ;;
+esac
+}
+
 install_package() {
   echo "Installing Package"
   if [[ $ext != "FAILED" ]]; then
     case $option in
     "1")
-      echo "Installing from source"
       echo "for Operating System : $Operating_System  $Version  $arch"
-      if [[ $ext == "deb" ]] || [[ $ext == "rpm" ]]; then
-        echo "This is not an archive containing source code - will now redirect to dpkg or rpm installation"
+      if [[ $ext == "deb" ]] || [[ $ext == "rpm" ]] || [[ $ext == "tgz" ]] || [[ $ext == "slp" ]]; then
+        echo "This is not an archive containing source code - will now redirect to alien installation"
+        option="2"
       else
         echo "Preparing to install from source $path_to_package_file"
       fi
       ;;
     "2")
-      echo "Installing via rpm/dkpg"
       echo "Operating System : $Operating_System  $Version  $arch"
-      if [[ $ext != "deb" ]] && [[ $ext != "rpm" ]]; then
-        echo "This is not an rpm or deb file - attempting to instal from source code archive"
+      if [[ $ext != "deb" ]] && [[ $ext != "rpm" ]] || [[ $ext != "tgz" ]] || [[ $ext != "slp" ]]; then
+        echo "This is not an file alien can install - attempting to instal from source code archive"
+        option="1"
       else
         echo "Preparing to install from $path_to_package_file"
       fi
       ;;
     esac
 
-    if [[ $Operating_System == "CentOS" ]]; then
-            echo "¯\_(ツ)_/¯"
-            echo "Good Luck"
-      yum install -y $PACKAGE_FOR_INSTALL
-    elif [[ $Operating_System == "Ubuntu" ]]; then
-      case $ext in
-      "deb")
-        echo "installing ${PACKAGE_FOR_INSTALL}"
-        apt-get install -yqq alien
-        alien -i $path_to_package_file
-        if [[ ! $? -eq 0 ]]; then
-          echo "installing failed"
-          install_dependencies
-        fi
-        ;;
-      "rpm")
-        echo "You are trying to install a redhat package on UBUNTU you will be forced to install alien now"
-        apt-get install -yqq alien
-        alien -i $path_to_package_file
-        if [[ ! $? -eq 0 ]]; then
-          echo "installing failed"
-          install_dependencies
-        fi
-        ;;
-      *)
-        apt-get install -yqq build-essential
-        apt-get install -yqq checkinstall
-
-        cd $installation_target
-
-        # Check if folder is there or create it with the right permission
-        if [[ ! -d "$installation_target/source_code" ]]; then
-          mkdir "$installation_target/source_code"
-          chmod -R 777 "$installation_target/source_code"
-        fi
-
-        tar -xf $path_to_package_file -C "$installation_target/source_code" &&
-          foldername=$(ls "$installation_target/source_code" | grep "${my_ext[0]}")
-        cd "$installation_target/source_code/$foldername"
-        ./configure 
-        if [[ $? -eq 0 ]]; then
-          echo "configuration successful"
-          make
-          if [[ $? -eq 0 ]]; then
-            echo "make successful"
-          fi
-        fi
-        error_status=$(checkinstall 2>&1 1>/dev/null)
-        #or should we use:
-        #error_status=$(checkinstall 2>&1)
-        check_installation_status
-        ;;
-      esac
+    if [[ $Operating_System == "Ubuntu" ]]; then
+      install_software
     else
+      echo "$Operating_System is not official supported"
       echo "¯\_(ツ)_/¯"
-      echo "Good Luck"
-      case $ext in
-      "deb")
-        echo "installing ${PACKAGE_FOR_INSTALL}"
-        apt-get install -yqq alien
-        alien -i $path_to_package_file
-        if [[ ! $? -eq 0 ]]; then
-          echo "installing failed"
-          install_dependencies
-        fi
-        ;;
-      "rpm")
-        echo "You are trying to install a redhat package on UBUNTU you will be forced to install alien now"
-        apt-get install -yqq alien
-        alien -i $path_to_package_file
-        if [[ ! $? -eq 0 ]]; then
-          echo "installing failed"
-          install_dependencies
-        fi
-        ;;
-      *)
-        apt-get install -yqq build-essential
-        apt-get install -yqq checkinstall
-
-        cd $installation_target
-
-        # Check if folder is there or create it with the right permission
-        if [[ ! -d "$installation_target/source_code" ]]; then
-          mkdir "$installation_target/source_code"
-          chmod -R 777 "$installation_target/source_code"
-        fi
-
-        tar -xf $path_to_package_file -C "$installation_target/source_code" &&
-          foldername=$(ls "$installation_target/source_code" | grep "${my_ext[0]}")
-        cd "$installation_target/source_code/$foldername"
-        ./configure 
-        if [[ $? -eq 0 ]]; then
-          echo "configuration successful"
-          make
-          if [[ $? -eq 0 ]]; then
-            echo "make successful"
-          fi
-        fi
-        error_status=$(checkinstall 2>&1 1>/dev/null)
-        #or should we use:
-        #error_status=$(checkinstall 2>&1)
-        check_installation_status
-        ;;
-      esac
+      read -p "do you wish to continue (y/n)?" -n 1 -r
+      echo ""
+      if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        exit 1
+      fi
+      echo "Good Luck o7"
+      install_software
     fi
   else
     echo "¯\_(ツ)_/¯"
@@ -368,7 +328,7 @@ check_installation_status() {
   echo "Status for installation"
   if [[ $error_status != "" ]]; then
     echo "the following error was detected"
-    echo "$error_stat"
+    echo "$error_status"
     exit
   fi
 }
@@ -377,21 +337,24 @@ install_dependencies() {
   apt-cache showpkg ${PACKAGE_FOR_INSTALL}
   echo "You need to install these packages to install ${PACKAGE_FOR_INSTALL}"
   echo "Do you want to install this package before reinstalling ${PACKAGE_FOR_INSTALL}"
-  read -p "yes/no?" -n 1 -r
-  
+  read -p "y/n?" -n 1 -r
+  echo ""
+
   if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    exit 1
+    error_status="alien failed to install package."
+  else
+    apt-get install -f -y 
   fi
-  apt-get install -f -y
+  
 }
 
 delta_force() {
   apt install sl
-  sl -F
+  sl 
 }
 
 main() {
-  if [ ${a_flag} == 'true' ]; then
+  if [[ ${a_flag} == 'true' ]]; then
     PACKAGE_FOR_INSTALL="Automatic_Install"
     option='x'
     LINK_TO_PACKAGE=${LINK_INPUT}
@@ -402,7 +365,6 @@ main() {
   download_package
   check_file_type
   install_package
-
   delta_force
 }
 # test rpm
