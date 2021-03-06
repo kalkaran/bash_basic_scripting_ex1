@@ -25,7 +25,7 @@
 script_name=$0
 
 # On the first error encountered, stop!
-set -e
+#set -e
 
 # A function that shows how to use the program
 show_usage() {
@@ -262,9 +262,7 @@ install_package() {
       "deb")
         echo "installing ${PACKAGE_FOR_INSTALL}"
         dpkg -i $path_to_package_file
-        if [[ $? ]]; then
-          echo "installing successful"
-        else
+        if [[ ! $? -eq 0 ]]; then
           echo "installing failed"
         fi
         ;;
@@ -272,9 +270,7 @@ install_package() {
         echo "You are trying to install a redhat package on UBUNTU you will be forced to install alien now"
         sudo apt-get install -yqq alien
         sudo alien -i $path_to_package_file
-        if [[ $? ]]; then
-          echo "installing successful"
-        else
+        if [[ ! $? -eq 0 ]]; then
           echo "installing failed"
         fi
         ;;
@@ -359,6 +355,6 @@ main() {
   #delta_force
 }
 
-#https://nmap.org/dist/nmap-7.91-1.x86_64.rpm
-#
+# https://nmap.org/dist/nmap-7.91-1.x86_64.rpm
+# http://archive.ubuntu.com/ubuntu/pool/main/s/samba/samba_4.11.6+dfsg-0ubuntu1_amd64.deb
 main
