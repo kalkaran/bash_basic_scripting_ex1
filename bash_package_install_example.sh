@@ -284,7 +284,7 @@ install_package() {
 
         cd $installation_target
 
-        # Check if folder is ther or create it with the right permission
+        # Check if folder is there or create it with the right permission
         if [[ ! -d "$installation_target/source_code" ]]; then
           mkdir "$installation_target/source_code"
           chmod -R 777 "$installation_target/source_code"
@@ -305,6 +305,7 @@ install_package() {
           echo "configuration failed"
         fi
         error_status=$(sudo checkinstall 2>&1 1>/dev/null)
+        check_installation_status
         ;;
       esac
     else
@@ -323,6 +324,7 @@ check_installation_status() {
     exit
   fi
 }
+
 
 install_dependencies() {
   apt-cache showpkg $1
@@ -353,7 +355,6 @@ main() {
   download_package
   check_file_type
   install_package
-  check_installation_status
 
   #delta_force
 }
