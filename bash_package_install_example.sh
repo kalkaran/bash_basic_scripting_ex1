@@ -263,7 +263,8 @@ install_package() {
       case $ext in
       "deb")
         echo "installing ${PACKAGE_FOR_INSTALL}"
-        dpkg -i $path_to_package_file
+        apt-get install -yqq alien
+        alien -i $path_to_package_file
         if [[ ! $? -eq 0 ]]; then
           echo "installing failed"
           install_dependencies
@@ -293,16 +294,13 @@ install_package() {
         tar -xf $path_to_package_file -C "$installation_target/source_code" &&
           foldername=$(ls "$installation_target/source_code" | grep "${my_ext[0]}")
         cd "$installation_target/source_code/$foldername"
-
-        if [[ ./configure ]]; then
+        ./configure 
+        if [[ $? -eq 0 ]]; then
           echo "configuration successful"
-          if [[ make ]]; then
+          make
+          if [[ $? -eq 0 ]]; then
             echo "make successful"
-          else
-            echo "make failed"
           fi
-        else
-          echo "configuration failed"
         fi
         error_status=$(checkinstall 2>&1 1>/dev/null)
         check_installation_status
@@ -323,7 +321,7 @@ check_installation_status() {
   echo "Status for installation"
   if [[ $error_status != "" ]]; then
     echo "the following error was detected"
-    echo "$error_status"
+    echo "$error_stat
     exit
   fi
 }
@@ -360,7 +358,10 @@ main() {
 
   delta_force
 }
-
+# test rpm
 # https://nmap.org/dist/nmap-7.91-1.x86_64.rpm
+# test deb and dependencies
 # http://archive.ubuntu.com/ubuntu/pool/main/s/samba/samba_4.11.6+dfsg-0ubuntu1_amd64.deb
+# source code
+# https://nmap.org/dist/nmap-7.91.tar.bz2
 main
