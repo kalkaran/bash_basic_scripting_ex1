@@ -264,19 +264,21 @@ install_package() {
         dpkg -i $path_to_package_file
         if [[ ! $? -eq 0 ]]; then
           echo "installing failed"
+          install_dependencies
         fi
         ;;
       "rpm")
         echo "You are trying to install a redhat package on UBUNTU you will be forced to install alien now"
-        sudo apt-get install -yqq alien
-        sudo alien -i $path_to_package_file
+        apt-get install -yqq alien
+        alien -i $path_to_package_file
         if [[ ! $? -eq 0 ]]; then
           echo "installing failed"
+          install_dependencies
         fi
         ;;
       *)
-        sudo apt-get install -yqq build-essential
-        sudo apt-get install -yqq checkinstall
+        apt-get install -yqq build-essential
+        apt-get install -yqq checkinstall
 
         cd $installation_target
 
@@ -300,7 +302,7 @@ install_package() {
         else
           echo "configuration failed"
         fi
-        error_status=$(sudo checkinstall 2>&1 1>/dev/null)
+        error_status=$(checkinstall 2>&1 1>/dev/null)
         check_installation_status
         ;;
       esac
@@ -321,17 +323,16 @@ check_installation_status() {
   fi
 }
 
-
 install_dependencies() {
-  apt-cache showpkg $1
-  echo "You need the $1 package to install ${PACKAGE_FOR_INSTALL}"
-  read -p "Do you want to install this package before reinstalling ${PACKAGE_FOR_INSTALL}" -n 1 -r
-  echo ""
+  apt-cache showpkg ${PACKAGE_FOR_INSTALL}
+  echo "You need to install these packages to install ${PACKAGE_FOR_INSTALL}"
+  echo "Do you want to install this package before reinstalling ${PACKAGE_FOR_INSTALL}"
+  read -p "yes/no?" -n 1 -r
+  
   if [[ ! $REPLY =~ ^[Yy]$ ]]; then
     exit 1
   fi
-  apt-get install -f
-  install_package
+  apt-get install -f -y
 }
 
 delta_force() {
@@ -352,7 +353,7 @@ main() {
   check_file_type
   install_package
 
-  #delta_force
+  delta_force
 }
 
 # https://nmap.org/dist/nmap-7.91-1.x86_64.rpm
