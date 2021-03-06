@@ -303,6 +303,8 @@ install_package() {
           fi
         fi
         error_status=$(checkinstall 2>&1 1>/dev/null)
+        #or should we use:
+        #error_status=$(checkinstall 2>&1)
         check_installation_status
         ;;
       esac
