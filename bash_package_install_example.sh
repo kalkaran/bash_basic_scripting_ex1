@@ -294,9 +294,9 @@ install_package() {
           foldername=$(ls "$installation_target/source_code" | grep "${my_ext[0]}")
         cd "$installation_target/source_code/$foldername"
 
-        if [[ -f ./configure ]]; then
+        if [[ ./configure ]]; then
           echo "configuration successful"
-          if [[ -f make ]]; then
+          if [[ make ]]; then
             echo "make successful"
           else
             echo "make failed"
