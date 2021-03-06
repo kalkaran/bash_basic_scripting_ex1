@@ -59,8 +59,8 @@ while test $# -gt 0; do
     if test $# -gt 0; then
       export LINK_INPUT=$1
     else
-      echo "no link specified"
-      exit 1
+      error_status="no link specified"
+      check_installation_status
     fi
     shift
     ;;
@@ -112,7 +112,7 @@ menu() {
     ;;
   [Qq]*)
     echo "Goodbye !"
-    exit
+    exit 0
     ;;
   *) echo "invalid option $option" ;;
   esac
@@ -144,20 +144,34 @@ download_package() {
   #check if wget installed?
   wget "${LINK_TO_PACKAGE}" -P "${path_to_package}"
 }
-
+check_option(){
+  if [[ option != $1]]; then
+    if [[ $1 == "1" ]]; then
+      echo "This is not an archive containing source code - will now redirect to alien installation"
+      option="2"
+    else
+      echo "This is not an package alien can install - attempting to instal from source code archive"
+      option="1"
+    fi
+  fi
+}
 check_file_type() {
   #needs to check file type
   echo "Checking file type"
   echo "File types supported:"
+  echo "zip"
+  echo "tar"
+  echo "tar.bz2"
+  echo "bz2"
+  echo "tar.gz"
+  echo "gz"
+  echo "tar.xz"
+  echo "xz"
   echo "deb"
   echo "rpm"
-  echo "zip"
-  echo "tar.bz2"
-  echo "tar.gz"
-  echo "tar.xz"
-  echo "tar"
-  echo "bz2"
   echo "tgz"
+  echo "slp"
+  echo "pkg"
 
   # URL FILE FORMAT : https://nmap.org/dist/nmap-7.91-1.x86_64.rpm
   #save link as an array split by /
@@ -179,8 +193,10 @@ check_file_type() {
     ext1=${my_ext[-1]}
     ext2=${my_ext[-2]}
     case $ext1 in
+    # source
     "bz2")
       echo "bz2 found checking for tar"
+      check_option "1"
       if [[ $ext2 == "tar" ]]; then
         ext="tar.bz2"
       else
@@ -189,6 +205,7 @@ check_file_type() {
       ;;
     "gz")
       echo "gz found checking for tar"
+      check_option "1"
       if [[ $ext2 == "tar" ]]; then
         ext="tar.gz"
       else
@@ -197,28 +214,44 @@ check_file_type() {
       ;;
     "xz")
       echo "xz found checking for tar"
+      check_option "1"
       if [[ $ext2 == "tar" ]]; then
         ext="tar.xz"
       else
         ext="xz"
       fi
       ;;
-    "deb")
-      ext=$ext1
-      echo "$ext1 file found"
-      ;;
-    "tgz")
-      ext=$ext1
-      echo "$ext1 file found"
-      ;;
-    "rpm")
-      ext=$ext1
-      echo "$ext1 file found"
-      ;;
     "zip")
       ext=$ext1
+      check_option "1"
       echo "$ext1 file found"
       ;;
+    # package
+    "deb") # Debian deb
+      ext=$ext1
+      check_option "2"
+      echo "$ext1 file found"
+      ;;
+    "tgz") # Stampede slp
+      ext=$ext1
+      check_option "2"
+      echo "$ext1 file found"
+      ;;
+    "rpm") # Red Hat rpm
+      ext=$ext1
+      check_option "2"
+      echo "$ext1 file found"
+      ;;
+    "slp") # Stampede slp
+      ext=$ext1
+      check_option "2"
+      echo "$ext1 file found"
+      ;; 
+    "pkg") # Solaris pkg
+      ext=$ext1
+      check_option "2"
+      echo "$ext1 file found"
+      ;; #Stampede slp
     *)
       echo "File format '$ext1' not recognised"
       ext="FAILED"
@@ -234,9 +267,16 @@ install_software(){
 case $option in
 "1")
   # Install from source"
-  echo "Installing from source"
-  apt-get install -yqq build-essential
-  apt-get install -yqq checkinstall
+  echo "Installing from source, to do this these packages need to be installed:"
+  echo "build-essential"
+  echo "checkinstall "
+  read -p "do you wish to continue (y/n)?" -n 1 -r
+  echo ""
+  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    exit 1
+  fi
+  check_if_installed "build-essential"
+  check_if_installed "checkinstall"
 
   cd $installation_target
 
@@ -272,7 +312,7 @@ case $option in
   # Install via dpkg or rpm"
   echo "Installing via alien"
   echo "installing ${PACKAGE_FOR_INSTALL}"  
-  apt-get install -yqq alien
+  check_if_installed "alien"
   alien -i $path_to_package_file
   if [[ ! $? -eq 0 ]]; then
     echo "installing failed"
@@ -285,24 +325,13 @@ esac
 install_package() {
   echo "Installing Package"
   if [[ $ext != "FAILED" ]]; then
+    echo "for Operating System : $Operating_System  $Version  $arch"
     case $option in
     "1")
-      echo "for Operating System : $Operating_System  $Version  $arch"
-      if [[ $ext == "deb" ]] || [[ $ext == "rpm" ]] || [[ $ext == "tgz" ]] || [[ $ext == "slp" ]]; then
-        echo "This is not an archive containing source code - will now redirect to alien installation"
-        option="2"
-      else
-        echo "Preparing to install from source $path_to_package_file"
-      fi
+      echo "Preparing to install from source $path_to_package_file"
       ;;
     "2")
-      echo "Operating System : $Operating_System  $Version  $arch"
-      if [[ $ext != "deb" ]] && [[ $ext != "rpm" ]] || [[ $ext != "tgz" ]] || [[ $ext != "slp" ]]; then
-        echo "This is not an file alien can install - attempting to instal from source code archive"
-        option="1"
-      else
-        echo "Preparing to install from $path_to_package_file"
-      fi
+      echo "Preparing to install from package $path_to_package_file"
       ;;
     esac
 
@@ -329,7 +358,7 @@ check_installation_status() {
   if [[ $error_status != "" ]]; then
     echo "the following error was detected"
     echo "$error_status"
-    exit
+    exit 1
   fi
 }
 
@@ -348,9 +377,22 @@ install_dependencies() {
   
 }
 
+check_if_installed(){
+  installed="$(apt list --installed | grep $1)"
+  if [[ $installed == "" ]]; then
+    apt-get install -yqq $1
+    if [[ ! $? -eq 0 ]]; then
+      error_status="installing $1 failed"
+      check_installation_status
+    fi 
+  else
+    echo "$1 is installed"
+  fi
+}
+
 delta_force() {
-  apt install sl
-  sl 
+  check_if_installed "sl"
+  sl -F
 }
 
 main() {
