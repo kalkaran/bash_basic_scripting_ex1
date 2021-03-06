@@ -50,24 +50,27 @@ while test $# -gt 0; do
     echo "-a, --automatic_install   automatically select settings for install"
     echo "-l, --link                specify a link for package (required for automatic install)"
     exit 0
-    ;;
-  -a | --automatic_install)
-    a_flag='true'
-    ;;
-  -l | --link)
+  ;;
+  -l)
     shift
     if test $# -gt 0; then
       export LINK_INPUT=$1
+      a_flag='true'
     else
       error_status="no link specified"
       check_installation_status
     fi
     shift
-    ;;
+  ;;
+  --link)
+    export LINK_INPUT=$1
+    a_flag='true'
+  shift
+  ;;
   *)
     show_usage
     break
-    ;;
+  ;;
   esac
 done
 
@@ -145,13 +148,13 @@ download_package() {
   wget "${LINK_TO_PACKAGE}" -P "${path_to_package}"
 }
 check_option(){
-  if [[ option != $1]]; then
-    if [[ $1 == "1" ]]; then
-      echo "This is not an archive containing source code - will now redirect to alien installation"
-      option="2"
-    else
+  if [[ $option != $1 ]]; then
+    if [[ $1 -eq 1 ]]; then
       echo "This is not an package alien can install - attempting to instal from source code archive"
       option="1"
+    else
+      echo "This is not an archive containing source code - will now redirect to alien installation"
+      option="2"
     fi
   fi
 }
@@ -195,62 +198,62 @@ check_file_type() {
     case $ext1 in
     # source
     "bz2")
-      echo "bz2 found checking for tar"
-      check_option "1"
       if [[ $ext2 == "tar" ]]; then
         ext="tar.bz2"
       else
         ext="bz2"
       fi
+      echo "$ext file found"
+      check_option "1"
       ;;
     "gz")
-      echo "gz found checking for tar"
-      check_option "1"
       if [[ $ext2 == "tar" ]]; then
         ext="tar.gz"
       else
         ext="gz"
       fi
+      echo "$ext file found"
+      check_option "1"
       ;;
     "xz")
-      echo "xz found checking for tar"
-      check_option "1"
       if [[ $ext2 == "tar" ]]; then
         ext="tar.xz"
       else
         ext="xz"
       fi
+      echo "$ext file found"
+      check_option "1"
       ;;
     "zip")
       ext=$ext1
-      check_option "1"
       echo "$ext1 file found"
+      check_option "1"
       ;;
     # package
     "deb") # Debian deb
       ext=$ext1
-      check_option "2"
       echo "$ext1 file found"
+      check_option "2"
       ;;
     "tgz") # Stampede slp
       ext=$ext1
-      check_option "2"
       echo "$ext1 file found"
+      check_option "2"
       ;;
     "rpm") # Red Hat rpm
       ext=$ext1
-      check_option "2"
       echo "$ext1 file found"
+      check_option "2"
       ;;
     "slp") # Stampede slp
       ext=$ext1
-      check_option "2"
       echo "$ext1 file found"
+      check_option "2"
       ;; 
     "pkg") # Solaris pkg
       ext=$ext1
-      check_option "2"
       echo "$ext1 file found"
+      check_option "2"
       ;; #Stampede slp
     *)
       echo "File format '$ext1' not recognised"
