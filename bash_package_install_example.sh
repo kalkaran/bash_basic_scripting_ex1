@@ -256,7 +256,9 @@ install_package() {
     esac
 
     if [[ $Operating_System == "CentOS" ]]; then
-      echo "Not implemented yet"
+            echo "¯\_(ツ)_/¯"
+            echo "Good Luck"
+      yum install -y $PACKAGE_FOR_INSTALL
     elif [[ $Operating_System == "Ubuntu" ]]; then
       case $ext in
       "deb")
